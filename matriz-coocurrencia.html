@@ -1,0 +1,625 @@
+<!doctype html>
+<html lang="es">
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Matriz de coocurrencias paso a paso</title>
+    <style>
+    :root {
+      --bg: #f7f8fb;
+      --panel: #ffffff;
+      --card: #f1f4f8;
+      --text: #1f2937;
+      --muted: #667085;
+      --border: #d9dee7;
+      --accent: #2563eb;
+      --accent-bg: #eaf2ff;
+      --context: #7c3aed;
+      --context-bg: #f2eaff;
+    }
+
+    * {
+      box-sizing: border-box
+    }
+
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text)
+    }
+
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 24px
+    }
+
+    h1 {
+      margin: 0 0 18px;
+      font-size: 28px
+    }
+
+    h2 {
+      font-size: 18px;
+      margin: 0 0 8px
+    }
+
+    p {
+      margin: 4px 0 10px;
+      color: var(--muted)
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap: 16px
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 16px
+    }
+
+    textarea {
+      width: 100%;
+      min-height: 180px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      font: inherit;
+      background: #fff
+    }
+
+    select,
+    button {
+      font: inherit;
+      border-radius: 10px;
+      padding: 10px 14px
+    }
+
+    select {
+      border: 1px solid var(--border);
+      background: #fff
+    }
+
+    button {
+      border: 1px solid var(--border);
+      background: #fff;
+      cursor: pointer
+    }
+
+    button.primary {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent)
+    }
+
+    button:disabled {
+      opacity: .45;
+      cursor: not-allowed
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin: 14px 0
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px
+    }
+
+    .label {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      color: var(--muted)
+    }
+
+    .big {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 4px
+    }
+
+    .op {
+      margin-top: 14px;
+      background: var(--accent-bg);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap
+    }
+
+    .tokens {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      min-height: 60px;
+      align-items: center
+    }
+
+    .token {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 8px 12px;
+      background: #fff
+    }
+
+    .token.target {
+      outline: 2px solid var(--accent);
+      background: var(--accent-bg);
+      font-weight: 700
+    }
+
+    .token.context {
+      outline: 2px solid var(--context);
+      background: var(--context-bg)
+    }
+
+    .token.out {
+      opacity: .42
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      font-size: 14px
+    }
+
+    th,
+    td {
+      padding: 9px 10px;
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      text-align: center;
+      white-space: nowrap
+    }
+
+    thead th {
+      border-top: none;
+      background: var(--card)
+    }
+
+    th:first-child {
+      position: sticky;
+      left: 0;
+      background: var(--card);
+      z-index: 2;
+      text-align: left
+    }
+
+    td.active,
+    th.active {
+      background: var(--accent-bg);
+      font-weight: 700
+    }
+
+    td.context-active,
+    th.context-active {
+      background: var(--context-bg);
+      font-weight: 700
+    }
+
+    .muted {
+      color: var(--muted)
+    }
+
+    #message {
+      min-height: 20px
+    }
+
+    .legend {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      font-size: 13px;
+      color: var(--muted)
+    }
+
+    .dot {
+      display: inline-block;
+      width: 10px;
+      height: 10px;
+      border-radius: 999px;
+      margin-right: 5px;
+      vertical-align: -1px
+    }
+
+    .dot.target {
+      background: var(--accent)
+    }
+
+    .dot.context {
+      background: var(--context)
+    }
+
+    @media(max-width:800px) {
+      .grid {
+        grid-template-columns: 1fr
+      }
+
+      main {
+        padding: 14px
+      }
+    }
+    </style>
+  </head>
+
+  <body>
+    <main>
+      <h1>Matriz de coocurrencias paso a paso</h1>
+
+      <section class="grid">
+        <div class="panel">
+          <h2>1. Corpus de entrada</h2>
+          <p>Cada frase se procesa por separado; el contexto no cruza entre frases.</p>
+          <textarea id="corpus">El perro vive en casa.
+El gato vive en casa.
+El lobo vive en el bosque.
+El zorro vive en el bosque.
+El perro come carne.
+El lobo come carne.</textarea>
+
+          <div class="row" style="margin-top:12px">
+            <label>Ventana de contexto
+              <select id="windowSize">
+                <option value="1">1</option>
+                <option value="2" selected>2</option>
+                <option value="3">3</option>
+              </select>
+            </label>
+            <button id="rebuild" class="primary">Reconstruir</button>
+          </div>
+          <p id="message"></p>
+        </div>
+
+        <div class="panel">
+          <h2>2. Estado actual</h2>
+
+          <div class="cards">
+            <div class="card">
+              <div class="label">Paso</div>
+              <div id="stepCounter" class="big">0 / 0</div>
+            </div>
+            <div class="card">
+              <div class="label">Ventana</div>
+              <div id="windowLabel" class="big">2</div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="label">Palabra objetivo</div>
+            <div id="targetWord" class="big">—</div>
+
+            <div class="label" style="margin-top:14px">Palabras de contexto</div>
+            <div id="contextWords" style="margin-top:5px;font-size:18px;font-weight:600">—</div>
+
+            <div id="operation" class="op">Pulsa “Siguiente” para comenzar.</div>
+          </div>
+
+          <div class="row" style="margin-top:14px">
+            <button id="prev">◀ Anterior</button>
+            <button id="next" class="primary">Siguiente ▶</button>
+            <button id="play">▶ Automático</button>
+            <button id="reset">↻ Reiniciar</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>3. Palabra objetivo y ventana actual</h2>
+        <p>En cada paso se procesa una palabra objetivo completa y se actualizan todas sus coocurrencias a la vez.</p>
+        <div class="legend">
+          <span><span class="dot target"></span>objetivo</span>
+          <span><span class="dot context"></span>contexto</span>
+        </div>
+        <div id="tokens" class="tokens" style="margin-top:12px"></div>
+      </section>
+
+      <section class="panel">
+        <h2>4. Matriz de coocurrencias M</h2>
+        <p>En cada paso se suma 1 en todas las celdas <code>M[objetivo, contexto]</code> correspondientes a la ventana.</p>
+        <div class="table-wrap">
+          <table id="matrixTable"></table>
+        </div>
+        <p>Cada fila final es el vector de coocurrencias de una palabra.</p>
+      </section>
+    </main>
+
+    <script>
+    (() => {
+      const $ = id => document.getElementById(id);
+      const els = {
+        corpus: $('corpus'),
+        windowSize: $('windowSize'),
+        rebuild: $('rebuild'),
+        message: $('message'),
+        stepCounter: $('stepCounter'),
+        windowLabel: $('windowLabel'),
+        targetWord: $('targetWord'),
+        contextWords: $('contextWords'),
+        operation: $('operation'),
+        prev: $('prev'),
+        next: $('next'),
+        play: $('play'),
+        reset: $('reset'),
+        tokens: $('tokens'),
+        table: $('matrixTable')
+      };
+
+      let sentences = [];
+      let vocab = [];
+      let steps = [];
+      let matrix = {};
+      let step = 0;
+      let timer = null;
+
+      function normalize(s) {
+        return s.toLocaleLowerCase('es-ES')
+          .normalize('NFC')
+          .match(/[\p{L}\p{N}áéíóúüñ]+/gu) || [];
+      }
+
+      function parseCorpus(text) {
+        return text
+          .split(/[.!?\n]+/)
+          .map(normalize)
+          .filter(x => x.length);
+      }
+
+      function initMatrix(words) {
+        const m = {};
+        words.forEach(r => {
+          m[r] = {};
+          words.forEach(c => m[r][c] = 0);
+        });
+        return m;
+      }
+
+      function buildSteps() {
+        const w = Math.max(1, Math.min(5, Number(els.windowSize.value) || 1));
+        steps = [];
+
+        sentences.forEach((tokens, sentenceIndex) => {
+          tokens.forEach((target, targetIndex) => {
+            const start = Math.max(0, targetIndex - w);
+            const end = Math.min(tokens.length - 1, targetIndex + w);
+            const contexts = [];
+
+            for (let j = start; j <= end; j++) {
+              if (j === targetIndex) continue;
+              contexts.push({
+                word: tokens[j],
+                index: j
+              });
+            }
+
+            steps.push({
+              sentenceIndex,
+              targetIndex,
+              target,
+              contexts
+            });
+          });
+        });
+      }
+
+      function rebuild() {
+        stopAuto();
+
+        sentences = parseCorpus(els.corpus.value);
+        const all = sentences.flat();
+        vocab = [...new Set(all)].sort((a, b) => a.localeCompare(b, 'es'));
+
+        matrix = initMatrix(vocab);
+        step = 0;
+        buildSteps();
+
+        els.message.textContent = all.length ?
+          `${all.length} tokens · ${vocab.length} términos únicos · ${sentences.length} frases · ${steps.length} palabras objetivo.` :
+          'Escribe al menos una frase en el corpus.';
+
+        render();
+      }
+
+      function applyStep(s, delta) {
+        if (!s || !matrix[s.target]) return;
+
+        s.contexts.forEach(ctx => {
+          matrix[s.target][ctx.word] =
+            Math.max(0, matrix[s.target][ctx.word] + delta);
+        });
+      }
+
+      function nextStep() {
+        if (step >= steps.length) return;
+        applyStep(steps[step], 1);
+        step++;
+        render();
+        if (step >= steps.length) stopAuto();
+      }
+
+      function prevStep() {
+        if (step <= 0) return;
+        step--;
+        applyStep(steps[step], -1);
+        render();
+      }
+
+      function reset() {
+        stopAuto();
+        matrix = initMatrix(vocab);
+        step = 0;
+        render();
+      }
+
+      function currentStep() {
+        return step > 0 ? steps[step - 1] : null;
+      }
+
+      function renderTokens() {
+        els.tokens.innerHTML = '';
+        const s = currentStep();
+
+        if (!s) {
+          els.tokens.innerHTML =
+            '<span class="muted">Todavía no se ha procesado ninguna palabra objetivo.</span>';
+          return;
+        }
+
+        const tokens = sentences[s.sentenceIndex];
+        const contextIndices = new Set(s.contexts.map(c => c.index));
+
+        tokens.forEach((token, i) => {
+          const span = document.createElement('span');
+          span.textContent = token;
+          span.className = 'token';
+
+          if (i === s.targetIndex) {
+            span.classList.add('target');
+          } else if (contextIndices.has(i)) {
+            span.classList.add('context');
+          } else {
+            span.classList.add('out');
+          }
+
+          els.tokens.appendChild(span);
+        });
+      }
+
+      function renderMatrix() {
+        els.table.innerHTML = '';
+        if (!vocab.length) return;
+
+        const s = currentStep();
+        const activeContexts = new Set(s ? s.contexts.map(c => c.word) : []);
+
+        const thead = document.createElement('thead');
+        const hr = document.createElement('tr');
+
+        const corner = document.createElement('th');
+        corner.textContent = 'objetivo \\\\ contexto';
+        hr.appendChild(corner);
+
+        vocab.forEach(word => {
+          const th = document.createElement('th');
+          th.textContent = word;
+          if (s && activeContexts.has(word)) {
+            th.classList.add('context-active');
+          }
+          hr.appendChild(th);
+        });
+
+        thead.appendChild(hr);
+        els.table.appendChild(thead);
+
+        const tbody = document.createElement('tbody');
+
+        vocab.forEach(rowWord => {
+          const tr = document.createElement('tr');
+
+          const rowHead = document.createElement('th');
+          rowHead.textContent = rowWord;
+          if (s && rowWord === s.target) {
+            rowHead.classList.add('active');
+          }
+          tr.appendChild(rowHead);
+
+          vocab.forEach(colWord => {
+            const td = document.createElement('td');
+            const val = matrix[rowWord][colWord];
+            td.textContent = String(val);
+
+            if (val === 0) td.classList.add('muted');
+
+            if (s && rowWord === s.target && activeContexts.has(colWord)) {
+              td.classList.add('active');
+            }
+
+            tr.appendChild(td);
+          });
+
+          tbody.appendChild(tr);
+        });
+
+        els.table.appendChild(tbody);
+      }
+
+      function render() {
+        const s = currentStep();
+
+        els.stepCounter.textContent = `${step} / ${steps.length}`;
+        els.windowLabel.textContent = els.windowSize.value;
+        els.targetWord.textContent = s ? s.target : '—';
+        els.contextWords.textContent = s ?
+          s.contexts.map(c => c.word).join(', ') :
+          '—';
+
+        if (s) {
+          const lines = s.contexts.map(ctx => {
+            const after = matrix[s.target][ctx.word];
+            return `M[${s.target}, ${ctx.word}] : ${Math.max(0, after - 1)} → ${after}`;
+          });
+          els.operation.textContent = lines.join('\n');
+        } else {
+          els.operation.textContent = 'Pulsa “Siguiente” para comenzar.';
+        }
+
+        els.prev.disabled = step <= 0;
+        els.next.disabled = step >= steps.length || steps.length === 0;
+
+        renderTokens();
+        renderMatrix();
+      }
+
+      function startAuto() {
+        if (timer || step >= steps.length) return;
+        els.play.textContent = '⏸ Pausar';
+
+        timer = setInterval(() => {
+          nextStep();
+          if (step >= steps.length) stopAuto();
+        }, 1100);
+      }
+
+      function stopAuto() {
+        if (timer) clearInterval(timer);
+        timer = null;
+        els.play.textContent = '▶ Automático';
+      }
+
+      els.rebuild.addEventListener('click', rebuild);
+      els.windowSize.addEventListener('change', rebuild);
+      els.next.addEventListener('click', nextStep);
+      els.prev.addEventListener('click', prevStep);
+      els.reset.addEventListener('click', reset);
+      els.play.addEventListener('click', () => timer ? stopAuto() : startAuto());
+
+      rebuild();
+    })();
+    </script>
+  </body>
+
+</html>
