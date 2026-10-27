@@ -1,7 +1,7 @@
 # DLPLN-2026-27
 # Deep Learning para el Procesamiento del Lenguaje Natural
 
-Este repositorio contiene material docente y práctico para la asignatura **Deep Learning para el Procesamiento del Lenguaje Natural (DLPLN)** del curso **2025–26**.
+Este repositorio contiene material docente y práctico para la asignatura **Deep Learning para el Procesamiento del Lenguaje Natural (DLPLN)** del curso **2026–27**.
 
 El repositorio está dividido en dos grandes bloques:
 
